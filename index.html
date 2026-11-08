@@ -376,6 +376,7 @@ header::after{background:linear-gradient(90deg,#9b1c24 0 33.3%,#fff 33.3% 66.6%,
 
  <section id="teacher" hidden>
   <div class="stats" id="tstats"></div>
+  <div class="card"><h3>🏆 مشاركة الصفوف</h3><small style="color:var(--mute)">الترتيب حسب متوسط النقاط لكل طالبة، ونسبة المشاركة = الطالبات اللواتي بدأن نشاطًا أو كسبن نقاطًا.</small><div id="tcls" style="margin:8px 0"></div><button class="btn alt" id="texp2">تصدير ملخص الصفوف إلى Excel</button></div>
   <div class="card"><h3 data-en="Participation and progress">متابعة المشاركات والتقدم</h3><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><label>الصف: <select id="tgf"><option value="">الكل</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button class="btn alt" id="texp">تصدير إلى Excel</button></div><div id="tcert" style="margin-bottom:8px"></div><div class="tw"><table><thead><tr><th>الطالب</th><th>الصف</th><th>الأنشطة</th><th>المشاركة</th><th>النقاط</th><th>الشهادة</th></tr></thead><tbody id="trows"></tbody></table></div></div>
   <div class="card"><h3 data-en="Weekly message">تحديث رسالة الأسبوع</h3>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input id="newmsg" style="flex:1;min-width:200px" placeholder="اكتبي رسالة الأسبوع الجديدة"><button class="btn" id="setmsg">نشر الرسالة</button></div></div>
@@ -434,7 +435,10 @@ function render(){
  $('#lb').innerHTML=!ST.length?'<li style="color:var(--mute);list-style:none">لا توجد طالبات بعد. ستظهر الأسماء هنا بعد تسجيل الدخول.</li>':[...ST].sort((a,b)=>b.pts-a.pts).map((x,i)=>`<li class="${x===s?'me':''}"><span class="rk">${i+1}</span><span class="nm">${x.n}<br><small style="color:var(--mute)">الصف ${x.g}</small></span><span class="pt">${x.pts}</span></li>`).join('');
  const tot=ST.reduce((a,x)=>a+x.pts,0),part=ST.filter(x=>x.done.size>0).length;
  $('#tstats').innerHTML=`<div class="stat"><b>${Math.round(part/Math.max(1,ST.length)*100)}%</b><span>نسبة المشاركة</span></div><div class="stat"><b>${Math.round(tot/Math.max(1,ST.length))}</b><span>متوسط النقاط</span></div><div class="stat"><b>${ST.reduce((a,x)=>a+x.done.size,0)}</b><span>أنشطة منجزة</span></div><div class="stat"><b>${ST.filter(x=>x.done.size>=3).length}</b><span>شهادات صادرة</span></div>`;
- const gf=$('#tgf').value,TL=ST.filter(x=>!gf||String(x.g)===gf),CL=TL.filter(x=>x.done.size>=3);
+ const gf=$('#tgf').value,TL=ST.filter(x=>!gf||gnum(x)===gf),CL=TL.filter(x=>x.done.size>=3);
+ const CM={};ST.forEach(x=>{const k=String(x.g);(CM[k]=CM[k]||[]).push(x)});
+ const CR=Object.keys(CM).map(k=>{const a=CM[k],n=a.length,tp=a.reduce((t,x)=>t+x.pts,0);return{k,n,tp,avg:Math.round(tp/n),ta:a.reduce((t,x)=>t+x.done.size,0),c:a.filter(x=>x.done.size>=3).length,pa:Math.round(a.filter(x=>x.pts>0||x.done.size>0).length/n*100)}}).sort((p,q)=>q.avg-p.avg||q.pa-p.pa);window.CR=CR;
+ $('#tcls').innerHTML=CR.length?'<div class="tw"><table><thead><tr><th>الصف والشعبة</th><th>الطالبات</th><th>متوسط النقاط</th><th>إجمالي النقاط</th><th>الأنشطة</th><th>الشهادات</th><th>المشاركة</th></tr></thead><tbody>'+CR.map((c,i)=>'<tr><td>'+(i==0?'🏆 ':'')+'الصف '+c.k+'</td><td>'+c.n+'</td><td>'+c.avg+'</td><td>'+c.tp+'</td><td>'+c.ta+'</td><td>'+c.c+'</td><td>'+c.pa+'%</td></tr>').join('')+'</tbody></table></div>':'<small>لا توجد بيانات بعد.</small>';
  $('#tcert').innerHTML=CL.length?'<b>🎓 الحاصلات على شهادة ('+CL.length+'):</b> '+CL.map(x=>x.n).join('، '):'<small style="color:var(--mute)">لا توجد شهادات صادرة بعد.</small>';
  $('#trows').innerHTML=TL.map(x=>{const p=Math.round(x.done.size/GATES.length*100),ok=x.done.size>=3;return`<tr><td>${x.n}</td><td>${x.g}</td><td>${x.done.size}/${GATES.length}</td><td style="min-width:110px"><div class="bar"><div style="width:${p}%"></div></div></td><td>${x.pts}</td><td>${ok?`🎓 <button class="btn alt" data-cert="${ST.indexOf(x)}">عرض / طباعة</button>`:'—'}</td></tr>`}).join('')}
 
@@ -457,12 +461,15 @@ function quiz(g,i,c){
   $('#fb').innerHTML=(right?'✅ ':'❌ ')+ex+'<br><button class="btn" id="nx" style="margin-top:8px">التالي</button>';
   $('#nx').onclick=()=>quiz(g,i+1,c+(right?1:0))})}
 
+function gnum(x){return (String(x.g).match(/\d+/)||[''])[0]}
 function showCert(st){const s=st||cur();openD('شهادة تقدير',`<div class="cert"><div style="font-size:38px">🎓</div><small>سلطنة عُمان | وزارة التعليم</small><br><small>مدرسة صفية أم المؤمنين للبنات الصفوف(5-8)</small><h2>شهادة تقدير</h2><p>تُمنح هذه الشهادة للطالب/ة</p><div class="nm">${s.n}</div><p>لإتمامه أنشطة «الصف المواطن الذكي» بوعي وتميز<br>— أنا فخر لوطني —</p><small>مديرة المدرسة: الأستاذة/ لمياء المحروقية &nbsp;|&nbsp; تنفيذ: الأستاذة/ راية الشهومية</small><br><small>${new Date().toLocaleDateString('ar-OM')}</small></div><p class="noprint"><button class="btn" id="pr">طباعة / حفظ PDF</button></p>`);
  $('#pr').onclick=()=>{document.body.classList.add('printing');print();document.body.classList.remove('printing')}}
 
 document.addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(g)openGate(g.dataset.g);const c=e.target.closest('[data-cert]');if(c&&ST[+c.dataset.cert])showCert(ST[+c.dataset.cert])});
 $('#tgf').onchange=()=>render();
-$('#texp').onclick=()=>{const gf=$('#tgf').value,q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[['الاسم','الصف','الأنشطة المنجزة','النقاط','الشهادة']].concat(ST.filter(x=>!gf||String(x.g)===gf).map(x=>[x.n,x.g,x.done.size+'/'+GATES.length,x.pts,x.done.size>=3?'نعم':'لا']));
+$('#texp2').onclick=()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[['الصف والشعبة','عدد الطالبات','متوسط النقاط','إجمالي النقاط','الأنشطة المنجزة','الشهادات','نسبة المشاركة %']].concat((window.CR||[]).map(c=>['الصف '+c.k,c.n,c.avg,c.tp,c.ta,c.c,c.pa]));
+ const b=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ملخص-الصفوف.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('#texp').onclick=()=>{const gf=$('#tgf').value,q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[['الاسم','الصف','الأنشطة المنجزة','النقاط','الشهادة']].concat(ST.filter(x=>!gf||gnum(x)===gf).map(x=>[x.n,x.g,x.done.size+'/'+GATES.length,x.pts,x.done.size>=3?'نعم':'لا']));
  const b=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='تقرير-الصف'+(gf?'-'+gf:'')+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-selected',x===b));['home','me','board','teacher'].forEach(t=>$('#'+t).hidden=t!==b.dataset.tab);scrollTo(0,0)});
 $('#login').innerHTML=ST.map((s,i)=>`<option value="${i}">${s.n} — الصف ${s.g}</option>`).join('');$('#login').value=me;
