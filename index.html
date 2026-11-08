@@ -273,6 +273,7 @@ header::after{height:6px;box-shadow:none;background:linear-gradient(90deg,#0f4a2
 .langbtn{border-radius:10px;border:1.5px solid var(--mar);background:#fff;color:var(--mar);padding:6px 18px;font-weight:700;font-size:15px}
 .langbtn:hover{background:var(--tint)}
 .langbtn[hidden]{display:none}
+body.stu [data-tab=board],body.stu #board,body.stu .rk{display:none!important}
 #lout{margin-inline-start:8px;color:var(--red);border-color:var(--red)}
 .titleblk{text-align:center;padding:28px 0 22px}
 .titleblk h1{font-size:clamp(30px,5.6vw,50px);line-height:1.4}
@@ -327,7 +328,7 @@ header::after{background:linear-gradient(90deg,#9b1c24 0 33.3%,#fff 33.3% 66.6%,
 @media (max-width:720px){.mlogo{height:54px}.tf{width:62px}}
 </style>
 </head>
-<body>
+<body class="stu">
 
 <header>
   <div class="wrap">
@@ -426,7 +427,7 @@ function render(){
  $('#who1').textContent=cur().n+' · '+cur().pts+' نقطة';
  $('#gates').innerHTML=GATES.map(g=>`<button class="gate" data-g="${g.id}"><span class="ic${g.pic?' pic':''}${g.cover?' cover':''}" aria-hidden="true">${g.ic}</span><h3>${en?g.en:g.t}</h3><small>${g.s}</small><small>${g.d}</small><span class="${cur().done.has(g.id)?'st':'go'}">${cur().done.has(g.id)?'✓ مكتمل':'اكتشف الآن'}</span></button>`).join('');
  const s=cur(),rank=ST.includes(s)?[...ST].sort((a,b)=>b.pts-a.pts).indexOf(s)+1:'-',nextB=BADGES.find(b=>!b[2](s));
- $('#stats').innerHTML=`<div class="stat"><b>${s.pts}</b><span>نقاط التميز</span></div><div class="stat"><b>${s.done.size}/${GATES.length}</b><span>أنشطة مكتملة</span></div><div class="stat"><b>#${rank}</b><span>ترتيبي في لوحة الشرف</span></div><div class="stat"><b>${BADGES.filter(b=>b[2](s)).length}/${BADGES.length}</b><span>أوسمة</span></div>`;
+ $('#stats').innerHTML=`<div class="stat"><b>${s.pts}</b><span>نقاط التميز</span></div><div class="stat"><b>${s.done.size}/${GATES.length}</b><span>أنشطة مكتملة</span></div><div class="stat rk"><b>#${rank}</b><span>ترتيبي في لوحة الشرف</span></div><div class="stat"><b>${BADGES.filter(b=>b[2](s)).length}/${BADGES.length}</b><span>أوسمة</span></div>`;
  $('#badges').innerHTML=BADGES.map(b=>`<div class="badge ${b[2](s)?'on':''}"><i>${b[0]}</i>${b[1]}</div>`).join('');
  $('#log').innerHTML=s.log.length?s.log.map(l=>'<li>'+l+'</li>').join(''):'<li style="color:var(--mute);list-style:none">لا إنجازات بعد. افتح بوابة وابدأ أول نشاط.</li>';
  const ok=s.done.size>=3;$('#certbtn').disabled=!ok;$('#certinfo').textContent=ok?'مبروك! أتممتَ أنشطة الأسبوع المطلوبة.':'أتمّ ٣ أنشطة لتحصل على الشهادة (أنجزتَ '+s.done.size+').';
@@ -516,11 +517,27 @@ $i('tf').onsubmit=async e=>{e.preventDefault();err('');
  try{await A.signInWithEmailAndPassword(auth,(u=>u.includes('@')?u:u+'@'+TEACHER_DOMAIN)($i('tu').value.trim().toLowerCase()),$i('tp').value)}
  catch(x){err('اسم المستخدم أو كلمة المرور غير صحيحة')}};
 /* حفظ تقدم الطالب تلقائياً */
-function queue(){const o=meObj;if(!o||sg(o)===last)return;clearTimeout(tm);
- tm=setTimeout(async()=>{try{
-  await F.setDoc(F.doc(db,'board',uid),{n:o.n,g:o.g,pts:o.pts,done:[...o.done]});
-  await F.setDoc(F.doc(db,'students',uid),{ans:o.ans,log:o.log.slice(0,50)});last=sg(o)}
- catch(e){toast('تعذّر حفظ التقدم، تحقق من الاتصال')}},600)}
+let B=null,saving=false;
+const pend=o=>B&&(o.pts!==B.pts||o.ans!==B.ans||o.log.length!==B.log.length||[...o.done].some(x=>!B.done.has(x)));
+function queue(){const o=meObj;if(!o||!pend(o))return;clearTimeout(tm);tm=setTimeout(save,600)}
+async function save(){const o=meObj,id=uid;if(!o||!B||isT)return;
+ if(saving){tm=setTimeout(save,800);return}
+ if(!pend(o))return;
+ saving=true;
+ const b=B,sn={pts:o.pts,ans:o.ans,done:[...o.done],n:o.log.length},newLog=o.log.slice(0,o.log.length-b.log.length),bd=F.doc(db,'board',id),sd=F.doc(db,'students',id);
+ try{
+  const m=await F.runTransaction(db,async t=>{
+   const rb=await t.get(bd),rs=await t.get(sd),x=rb.exists()?rb.data():{},y=rs.exists()?rs.data():{};
+   const pts=(x.pts||0)+(sn.pts-b.pts),ans=(y.ans||0)+(sn.ans-b.ans),done=[...new Set([...(x.done||[]),...sn.done])],log=newLog.concat(y.log||[]).slice(0,50);
+   t.set(bd,{n:o.n,g:o.g,pts,done});t.set(sd,{ans,log});
+   return{pts,ans,done,log}});
+  const ex=m.pts-sn.pts,ea=m.ans-sn.ans;
+  o.pts+=ex;o.ans+=ea;m.done.forEach(d=>o.done.add(d));
+  o.log=o.log.slice(0,o.log.length-sn.n).concat(m.log);
+  B={pts:m.pts,ans:m.ans,done:new Set(m.done),log:m.log};
+  if(ex||ea||m.done.length!==sn.done.length)window.render()
+ }catch(e){toast('تعذّر حفظ التقدم، تحقق من الاتصال');tm=setTimeout(save,8000)}
+ saving=false}
 const r0=window.render;window.render=function(){r0();if(uid&&!isT)queue()};
 $i('setmsg').addEventListener('click',()=>{if(isT)F.setDoc(F.doc(db,'settings','week'),{text:$i('wmsg').textContent})});
 async function enter(u){
@@ -532,7 +549,7 @@ async function enter(u){
   const p=await F.getDoc(F.doc(db,'students',uid));
   const x=b.data(),y=p.exists()?p.data():{};
   meObj={id:uid,n:x.n,g:x.g,pts:x.pts||0,done:new Set(x.done||[]),ans:y.ans||0,log:y.log||[]};
-  cur=()=>ST[me];last=sg(meObj);
+  cur=()=>ST[me];last=sg(meObj);B={pts:meObj.pts,ans:meObj.ans,done:new Set(meObj.done),log:[...meObj.log]};
   card.innerHTML='<div><h2>مرحباً '+esc(meObj.n)+'</h2><small>الصف '+esc(meObj.g)+'</small></div><button class="btn alt" id="lo">تسجيل الخروج</button>';
  }else{
   uid=u.uid;
@@ -540,10 +557,11 @@ async function enter(u){
   isT=true;meObj={id:uid,n:'المعلمة',g:'-',pts:0,done:new Set(),ans:0,log:[]};cur=()=>meObj;
   card.innerHTML='<div><h2>لوحة المعلمة</h2></div><button class="btn alt" id="lo">تسجيل الخروج</button>';
  }
- document.querySelector('[data-tab=teacher]').hidden=!isT;
+ document.querySelector('[data-tab=teacher]').hidden=!isT;document.body.classList.toggle('stu',!isT);
  $i('lout').hidden=false;
  $i('lo').onclick=$i('lout').onclick=()=>{ls.del();A.signOut(auth)};
- unsub.push(F.onSnapshot(F.collection(db,'board'),s=>{
+ if(!isT){ST.length=0;ST.push(meObj);me=0;render()}
+ else unsub.push(F.onSnapshot(F.collection(db,'board'),s=>{
   ST.length=0;
   s.forEach(d=>{const x=d.data();ST.push(d.id===uid&&!isT?meObj:{id:d.id,n:x.n,g:x.g,pts:x.pts||0,done:new Set(x.done||[]),ans:0,log:[]})});
   if(!isT&&!ST.includes(meObj))ST.push(meObj);
