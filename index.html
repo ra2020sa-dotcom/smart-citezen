@@ -518,6 +518,8 @@ const norm=n=>n.normalize('NFKD').replace(/[\u064B-\u065F\u0670\u0640]/g,'').rep
 const sid=(n,g)=>g+'_'+norm(n).replace(/ /g,'-');
 /* نطاق بريد المعلمة: إن كتبت المعلمة اسم المستخدم فقط يُضاف هذا النطاق، وإن كتبت بريدًا كاملًا يُستخدم كما هو */
 const TEACHER_DOMAIN="safiya.school";
+/* غيّري القيمة إلى true لإعادة فتح المشاركة */
+const PARTICIPATION_OPEN=false;
 const KEY='sc_student';
 const ls={get:()=>{try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}},set:v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}},del:()=>{try{localStorage.removeItem(KEY)}catch(e){}}};
 let uid=null,isT=false,meObj=null,last="",tm,unsub=[];
@@ -532,7 +534,7 @@ document.body.append(ui);
 const lock=on=>ui.style.display=on?'flex':'none';
 const err=t=>$i('le').textContent=t;
 $i('tl').onclick=()=>{const t=$i('tf').hidden;$i('tf').hidden=!t;$i('sf').hidden=t;$i('tl').textContent=t?'دخول الطالب':'دخول المعلمة';err('')};
-$i('sf').onsubmit=async e=>{e.preventDefault();err('');
+$i('sf').onsubmit=async e=>{e.preventDefault();err('');if(!PARTICIPATION_OPEN){err('انتهت صلاحية المشاركة');return}
  const c=t=>t.replace(/\s+/g,' ').trim(),a=c($i('sn').value),b=c($i('sb').value),g=$i('sg').value,sc=c($i('ss').value),n=a+' '+b;
  if(a.split(' ').length<3){err('اكتب الاسم الثلاثي كاملاً');return}
  if(!b){err('اكتب القبيلة');return}
