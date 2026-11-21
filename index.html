@@ -89,6 +89,18 @@ dialog::backdrop{background:rgba(8,24,14,.6)}
 #toast.show{opacity:1}
 ul.log{padding-inline-start:20px;margin:8px 0 0}
 @media print{body.printing header,body.printing nav,body.printing main,body.printing #toast,body.printing .mh,body.printing .noprint{display:none!important}body.printing dialog{position:static;box-shadow:none}}
+@page{size:A4 landscape;margin:0}
+#certsheet{display:none}
+.cpg{width:297mm;height:209mm;padding:10mm;box-sizing:border-box;page-break-after:always;break-after:page;background:#fff;color:#0a120d}
+.cpg:last-child{page-break-after:auto;break-after:auto}
+.cpg .cin{height:100%;border:3mm double #c9a45c;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3mm;padding:8mm;box-sizing:border-box}
+.cpg .c0{font-size:14pt;font-weight:700;color:#0f4a2e;margin:0}
+.cpg h2{font-size:40pt;color:#0f4a2e;margin:2mm 0}
+.cpg .cn{font-size:34pt;font-weight:800;color:#7a5a1e;margin:2mm 0}
+.cpg .cg{font-size:16pt;font-weight:700;margin:0}
+.cpg .cx{font-size:17pt;font-weight:700;line-height:1.9;margin:0}
+.cpg .cf{font-size:13pt;font-weight:700;margin:0}
+@media print{body.printall>*:not(#certsheet){display:none!important}body.printall #certsheet{display:block!important}body.printall{background:#fff!important}body.printall::before,body.printall::after{display:none!important}.cpg,.cpg *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 .school{margin:0 0 14px;padding:12px 16px;border:1px solid rgba(217,176,106,.45);border-radius:14px;background:rgba(0,0,0,.18);display:flex;flex-wrap:wrap;gap:6px 22px;font-size:15px}
@@ -377,7 +389,8 @@ header::after{background:linear-gradient(90deg,#9b1c24 0 33.3%,#fff 33.3% 66.6%,
  <section id="teacher" hidden>
   <div class="stats" id="tstats"></div>
   <div class="card"><h3>🏆 مشاركة الصفوف</h3><small style="color:var(--mute)">الترتيب حسب متوسط النقاط لكل طالبة، ونسبة المشاركة = الطالبات اللواتي بدأن نشاطًا أو كسبن نقاطًا.</small><div id="tcls" style="margin:8px 0"></div><button class="btn alt" id="texp2">تصدير ملخص الصفوف إلى Excel</button></div>
-  <div class="card"><h3 data-en="Participation and progress">متابعة المشاركات والتقدم</h3><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><label>الصف: <select id="tgf"><option value="">الكل</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button class="btn alt" id="texp">تصدير إلى Excel</button></div><div id="tcert" style="margin-bottom:8px"></div><div class="tw"><table><thead><tr><th>الطالب</th><th>الصف</th><th>الأنشطة</th><th>المشاركة</th><th>النقاط</th><th>الشهادة</th></tr></thead><tbody id="trows"></tbody></table></div></div>
+  <div class="card"><h3>🧹 الأسماء المكررة</h3><small style="color:var(--mute)">يُعرض لكل طالبة سجل واحد فقط بأعلى نقاطها (الاسم نفسه في الصف نفسه). يمكنكِ حذف السجلات الأقل نقاطًا نهائيًا من قاعدة البيانات.</small><div id="tdupinfo" style="margin:8px 0"></div><button class="btn alt" id="tdel" disabled>حذف المكررات نهائيًا</button></div>
+  <div class="card"><h3 data-en="Participation and progress">متابعة المشاركات والتقدم</h3><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><label>الصف: <select id="tgf"><option value="">الكل</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button class="btn alt" id="texp">تصدير إلى Excel</button><button class="btn" id="tcertall">🖨️ طباعة كل الشهادات (PDF)</button></div><div id="tcert" style="margin-bottom:8px"></div><div class="tw"><table><thead><tr><th>الطالب</th><th>الصف</th><th>الأنشطة</th><th>المشاركة</th><th>النقاط</th><th>الشهادة</th></tr></thead><tbody id="trows"></tbody></table></div></div>
   <div class="card"><h3 data-en="Weekly message">تحديث رسالة الأسبوع</h3>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><input id="newmsg" style="flex:1;min-width:200px" placeholder="اكتبي رسالة الأسبوع الجديدة"><button class="btn" id="setmsg">نشر الرسالة</button></div></div>
  </section>
@@ -440,6 +453,7 @@ function render(){
  const CR=Object.keys(CM).map(k=>{const a=CM[k],n=a.length,tp=a.reduce((t,x)=>t+x.pts,0);return{k,n,tp,avg:Math.round(tp/n),ta:a.reduce((t,x)=>t+x.done.size,0),c:a.filter(x=>x.done.size>=3).length,pa:Math.round(a.filter(x=>x.pts>0||x.done.size>0).length/n*100)}}).sort((p,q)=>q.avg-p.avg||q.pa-p.pa);window.CR=CR;
  $('#tcls').innerHTML=CR.length?'<div class="tw"><table><thead><tr><th>الصف والشعبة</th><th>الطالبات</th><th>متوسط النقاط</th><th>إجمالي النقاط</th><th>الأنشطة</th><th>الشهادات</th><th>المشاركة</th></tr></thead><tbody>'+CR.map((c,i)=>'<tr><td>'+(i==0?'🏆 ':'')+'الصف '+c.k+'</td><td>'+c.n+'</td><td>'+c.avg+'</td><td>'+c.tp+'</td><td>'+c.ta+'</td><td>'+c.c+'</td><td>'+c.pa+'%</td></tr>').join('')+'</tbody></table></div>':'<small>لا توجد بيانات بعد.</small>';
  $('#tcert').innerHTML=CL.length?'<b>🎓 الحاصلات على شهادة ('+CL.length+'):</b> '+CL.map(x=>x.n).join('، '):'<small style="color:var(--mute)">لا توجد شهادات صادرة بعد.</small>';
+ {const d=window.DROPPED||[],e=$('#tdupinfo'),b=$('#tdel');if(e){e.textContent=d.length?'تم إخفاء '+d.length+' سجل مكرر (يُحتفظ بأعلى نقاط لكل طالبة).':'لا توجد أسماء مكررة.';b.disabled=!d.length}}
  $('#trows').innerHTML=TL.map(x=>{const p=Math.round(x.done.size/GATES.length*100),ok=x.done.size>=3;return`<tr><td>${x.n}</td><td>${x.g}</td><td>${x.done.size}/${GATES.length}</td><td style="min-width:110px"><div class="bar"><div style="width:${p}%"></div></div></td><td>${x.pts}</td><td>${ok?`🎓 <button class="btn alt" data-cert="${ST.indexOf(x)}">عرض / طباعة</button>`:'—'}</td></tr>`}).join('')}
 
 function openD(t,h){$('#dt').textContent=t;$('#db').innerHTML=h;$('#dlg').showModal()}
@@ -461,12 +475,18 @@ function quiz(g,i,c){
   $('#fb').innerHTML=(right?'✅ ':'❌ ')+ex+'<br><button class="btn" id="nx" style="margin-top:8px">التالي</button>';
   $('#nx').onclick=()=>quiz(g,i+1,c+(right?1:0))})}
 
+const normName=n=>String(n||'').normalize('NFKD').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim().toLowerCase();
+/* دمج المكرر: الاسم المطبَّع + رقم الصف؛ يبقى السجل الأعلى نقاطًا (ثم الأكثر أنشطة) */
+function dedupeST(){const m=new Map(),drop=[];ST.forEach(x=>{const k=gnum(x)+'|'+normName(x.n),o=m.get(k);if(!o){m.set(k,x);return}const better=x.pts>o.pts||(x.pts===o.pts&&x.done.size>o.done.size);if(better){drop.push(o);m.set(k,x)}else drop.push(x)});const keep=new Set(m.values()),out=ST.filter(x=>keep.has(x));ST.length=0;out.forEach(x=>ST.push(x));window.DROPPED=drop;return drop}
+function certHTML(s){return`<div class="cpg"><div class="cin"><div style="font-size:44pt">🎓</div><p class="c0">سلطنة عُمان | وزارة التعليم</p><p class="c0">مدرسة صفية أم المؤمنين للبنات الصفوف (5-8)</p><h2>شهادة تقدير</h2><p class="cx">تُمنح هذه الشهادة للطالبة</p><div class="cn">${s.n}</div><p class="cg">الصف: ${s.g}</p><p class="cx">لإتمامها أنشطة «الصف المواطن الذكي» بوعي وتميز<br>— أنا فخر لوطني —</p><p class="cf">مديرة المدرسة: الأستاذة/ لمياء المحروقية &nbsp;|&nbsp; تنفيذ: الأستاذة/ راية الشهومية</p><p class="cf">${new Date().toLocaleDateString('ar-OM')}</p></div></div>`}
+function printAllCerts(){const gf=$('#tgf').value,list=ST.filter(x=>x.done.size>=3&&(!gf||gnum(x)===gf)).sort((a,b)=>(+gnum(a))-(+gnum(b))||String(a.g).localeCompare(String(b.g),'ar')||String(a.n).localeCompare(String(b.n),'ar'));if(!list.length){toast('لا توجد شهادات صادرة للطباعة');return}let sh=$('#certsheet');if(!sh){sh=document.createElement('div');sh.id='certsheet';document.body.append(sh)}sh.innerHTML=list.map(certHTML).join('');document.body.classList.add('printall');toast('اختاري «حفظ كملف PDF» من نافذة الطباعة ('+list.length+' شهادة)');setTimeout(()=>{print();document.body.classList.remove('printall')},400)}
 function gnum(x){return (String(x.g).match(/\d+/)||[''])[0]}
 function showCert(st){const s=st||cur();openD('شهادة تقدير',`<div class="cert"><div style="font-size:38px">🎓</div><small>سلطنة عُمان | وزارة التعليم</small><br><small>مدرسة صفية أم المؤمنين للبنات الصفوف(5-8)</small><h2>شهادة تقدير</h2><p>تُمنح هذه الشهادة للطالب/ة</p><div class="nm">${s.n}</div><p>لإتمامه أنشطة «الصف المواطن الذكي» بوعي وتميز<br>— أنا فخر لوطني —</p><small>مديرة المدرسة: الأستاذة/ لمياء المحروقية &nbsp;|&nbsp; تنفيذ: الأستاذة/ راية الشهومية</small><br><small>${new Date().toLocaleDateString('ar-OM')}</small></div><p class="noprint"><button class="btn" id="pr">طباعة / حفظ PDF</button></p>`);
  $('#pr').onclick=()=>{document.body.classList.add('printing');print();document.body.classList.remove('printing')}}
 
 document.addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(g)openGate(g.dataset.g);const c=e.target.closest('[data-cert]');if(c&&ST[+c.dataset.cert])showCert(ST[+c.dataset.cert])});
 $('#tgf').onchange=()=>render();
+$('#tcertall').onclick=printAllCerts;
 $('#texp2').onclick=()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[['الصف والشعبة','عدد الطالبات','متوسط النقاط','إجمالي النقاط','الأنشطة المنجزة','الشهادات','نسبة المشاركة %']].concat((window.CR||[]).map(c=>['الصف '+c.k,c.n,c.avg,c.tp,c.ta,c.c,c.pa]));
  const b=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ملخص-الصفوف.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('#texp').onclick=()=>{const gf=$('#tgf').value,q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[['الاسم','الصف','الأنشطة المنجزة','النقاط','الشهادة']].concat(ST.filter(x=>!gf||gnum(x)===gf).map(x=>[x.n,x.g,x.done.size+'/'+GATES.length,x.pts,x.done.size>=3?'نعم':'لا']));
@@ -547,6 +567,7 @@ async function save(){const o=meObj,id=uid;if(!o||!B||isT)return;
  saving=false}
 const r0=window.render;window.render=function(){r0();if(uid&&!isT)queue()};
 $i('setmsg').addEventListener('click',()=>{if(isT)F.setDoc(F.doc(db,'settings','week'),{text:$i('wmsg').textContent})});
+ $i('tdel').onclick=async()=>{const d=(window.DROPPED||[]).slice();if(!isT||!d.length)return;if(!confirm('سيتم حذف '+d.length+' سجل مكرر نهائيًا مع الاحتفاظ بأعلى نقاط لكل طالبة. هل تريدين المتابعة؟'))return;let ok=0;for(const x of d){try{await F.deleteDoc(F.doc(db,'board',x.id));ok++;try{await F.deleteDoc(F.doc(db,'students',x.id))}catch(e){}}catch(e){}}toast(ok===d.length?'تم حذف '+ok+' سجل مكرر':'حُذف '+ok+' من '+d.length+'؛ تحقّقي من صلاحيات قاعدة البيانات')};
 async function enter(u){
  if(u.isAnonymous){
   const s=ls.get();if(!s){await A.signOut(auth);return}
@@ -571,6 +592,7 @@ async function enter(u){
  else unsub.push(F.onSnapshot(F.collection(db,'board'),s=>{
   ST.length=0;
   s.forEach(d=>{const x=d.data();ST.push(d.id===uid&&!isT?meObj:{id:d.id,n:x.n,g:x.g,pts:x.pts||0,done:new Set(x.done||[]),ans:0,log:[]})});
+  dedupeST();
   if(!isT&&!ST.includes(meObj))ST.push(meObj);
   me=isT?0:ST.indexOf(meObj);render()}));
  unsub.push(F.onSnapshot(F.doc(db,'settings','week'),d=>{if(d.exists()&&d.data().text)$i('wmsg').textContent=d.data().text}));
